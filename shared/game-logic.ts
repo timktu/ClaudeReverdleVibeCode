@@ -1,4 +1,4 @@
-import { dailyHints } from "./puzzles.js";
+import { dailyPuzzles } from "./puzzles.js";
 import type { PuzzleData, CheckRowResponse, LetterResult } from "./types.js";
 
 /**
@@ -8,12 +8,13 @@ import type { PuzzleData, CheckRowResponse, LetterResult } from "./types.js";
  */
 export function buildDailyPuzzle(date: Date = new Date()): PuzzleData {
   const day = date.getDay();
-  const hintsForDay = dailyHints[day % dailyHints.length];
+  const puzzleForDay = dailyPuzzles[day % dailyPuzzles.length];
 
   return {
     id: day + 1,
     name: `Daily Puzzle #${day + 1}`,
-    hints: hintsForDay.map((hint, index) => ({
+    solution: puzzleForDay.solution.toUpperCase(),
+    hints: puzzleForDay.hints.map((hint, index) => ({
       id: index + 1,
       rowIndex: index,
       text: hint.text,
@@ -23,9 +24,28 @@ export function buildDailyPuzzle(date: Date = new Date()): PuzzleData {
 }
 
 /**
- * Scores a guess for a given row against the puzzle. Mirrors the original
- * `/api/check-row` server logic exactly: the final row is the solution and is
- * compared against itself; earlier rows are scored against the solution.
+ * Scores a word against the puzzle's key word, Wordle-style. Every row is
+ * compared against the same key word (`puzzle.solution`), which is a separate
+ * word that may not appear among the grid rows.
+ */
+export function scoreWord(solution: string, word: string): LetterResult[] {
+  const key = solution.toUpperCase();
+  const value = word.toUpperCase();
+  return Array.from({ length: 5 }, (_, i) => {
+    if (value[i] === key[i]) {
+      return { letter: value[i], status: "correct" };
+    }
+    if (key.includes(value[i])) {
+      return { letter: value[i], status: "present" };
+    }
+    return { letter: value[i], status: "absent" };
+  });
+}
+
+/**
+ * Scores a guess for a given row. `isCorrect` reflects whether the guess
+ * matches that row's own answer (derived from its hint), while the tile colors
+ * always compare the word against the puzzle's key word.
  */
 export function scoreGuess(
   puzzle: PuzzleData,
@@ -37,27 +57,8 @@ export function scoreGuess(
     throw new Error("Hint not found");
   }
 
-  const solution = puzzle.hints[puzzle.hints.length - 1].answer.toUpperCase();
-  const correctAnswer = hint.answer.toUpperCase();
   const userGuess = guess.toUpperCase();
-  const isCorrect = userGuess === correctAnswer;
+  const isCorrect = userGuess === hint.answer.toUpperCase();
 
-  const result: LetterResult[] = Array.from({ length: 5 }, (_, i) => {
-    // Last row compares against itself (it IS the solution).
-    if (rowIndex === puzzle.hints.length - 1) {
-      return {
-        letter: userGuess[i],
-        status: userGuess[i] === correctAnswer[i] ? "correct" : "absent",
-      };
-    }
-    if (userGuess[i] === solution[i]) {
-      return { letter: userGuess[i], status: "correct" };
-    }
-    if (solution.includes(userGuess[i])) {
-      return { letter: userGuess[i], status: "present" };
-    }
-    return { letter: userGuess[i], status: "absent" };
-  });
-
-  return { isCorrect, result };
+  return { isCorrect, result: scoreWord(puzzle.solution, userGuess) };
 }

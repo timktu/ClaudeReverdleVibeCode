@@ -83,3 +83,27 @@
 .animate-shake {
   animation: shake 0.4s ease-in-out;
 }
+
+@keyframes flash-green {
+  0%, 100% { background-color: transparent; border-color: transparent; }
+  30%, 60% {
+    background-color: color-mix(in srgb, var(--tile-correct) 35%, transparent);
+    border-color: var(--tile-correct);
+  }
+}
+
+@keyframes flash-red {
+  0%, 100% { background-color: transparent; border-color: transparent; }
+  30%, 60% {
+    background-color: hsl(var(--destructive) / 0.25);
+    border-color: hsl(var(--destructive));
+  }
+}
+
+.animate-flash-green {
+  animation: flash-green 0.6s ease-in-out;
+}
+
+.animate-flash-red {
+  animation: flash-red 0.6s ease-in-out;
+}

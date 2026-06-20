@@ -8,7 +8,7 @@ import { useGameStore } from "@/stores/game-store";
  * Returns a stable `checkRow(rowIndex)` callback safe to use in keyboard handlers.
  */
 export function useRowChecker() {
-  const { grid, completedRows, isRowComplete, markRowCompleted, markRowShake, selectCell } =
+  const { grid, completedRows, isRowComplete, markRowCompleted, flashRow, selectCell } =
     useGameStore();
   const mutation = useCheckRow();
 
@@ -20,20 +20,21 @@ export function useRowChecker() {
       try {
         const data = await mutation.mutateAsync({ rowIndex, guess });
         if (data.isCorrect) {
+          flashRow(rowIndex, "correct");
           setTimeout(() => {
             markRowCompleted(rowIndex);
             if (rowIndex < 4) selectCell(rowIndex + 1, 0);
           }, 300);
         } else {
-          markRowShake(rowIndex);
-          toast.error("Not quite right. Keep trying!");
+          // Shake + red flash are signal enough; no toast needed.
+          flashRow(rowIndex, "incorrect");
         }
       } catch {
         toast.error("Failed to check answer. Please try again.");
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [grid, completedRows, isRowComplete, markRowCompleted, markRowShake, selectCell]
+    [grid, completedRows, isRowComplete, markRowCompleted, flashRow, selectCell]
   );
 
   return { checkRow, isPending: mutation.isPending };

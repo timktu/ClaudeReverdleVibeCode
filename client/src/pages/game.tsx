@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useAnimationControls } from "motion/react";
 import { toast } from "sonner";
 import { AlertCircle, RotateCcw, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ export default function GamePage() {
   const { data: puzzle, isLoading, error } = usePuzzle();
   const { resetGame, gameCompleted, completedRows, isRowComplete } = useGameStore();
   const { checkRow, isPending } = useRowChecker();
+  // Bounce lives on a nested element (scale only); the outer overlay keeps its
+  // own declarative entrance so it reliably mounts and stays put.
+  const bounceControls = useAnimationControls();
 
   useEffect(() => {
     toast("Welcome to Reverdle!", {
@@ -32,6 +35,16 @@ export default function GamePage() {
   }, [gameCompleted]);
 
   const handleCheckAll = async () => {
+    // Already solved — nothing left to check, so draw attention to the
+    // completion banner with a bounce instead of a misleading toast.
+    if (gameCompleted) {
+      bounceControls.start({
+        scale: [1, 1.08, 0.96, 1.04, 1],
+        transition: { duration: 0.5, ease: "easeInOut" },
+      });
+      return;
+    }
+
     let anyChecked = false;
     let anyWrong = false;
 
@@ -81,9 +94,14 @@ export default function GamePage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="w-full rounded-lg bg-[var(--tile-correct)]/15 border border-[var(--tile-correct)]/40 px-4 py-3 text-center text-sm font-semibold text-[var(--tile-correct)]"
+              className="w-full"
             >
-              Puzzle complete! 🎉
+              <motion.div
+                animate={bounceControls}
+                className="w-full rounded-lg bg-[var(--tile-correct)]/15 border border-[var(--tile-correct)]/40 px-4 py-3 text-center text-sm font-semibold text-[var(--tile-correct)]"
+              >
+                Puzzle complete! 🎉
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

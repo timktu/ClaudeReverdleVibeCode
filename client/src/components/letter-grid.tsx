@@ -3,28 +3,30 @@ import { motion, AnimatePresence } from "motion/react";
 import { useGameStore } from "@/stores/game-store";
 import { useRowChecker } from "@/hooks/use-row-checker";
 import { cn } from "@/lib/utils";
+import { scoreWord } from "@shared/game-logic";
 import type { PuzzleData } from "@shared/types";
 
 interface LetterGridProps {
   puzzle: PuzzleData;
 }
 
-function getTileColor(puzzle: PuzzleData, rowIndex: number, colIndex: number): string {
-  if (rowIndex === puzzle.hints.length - 1) {
-    return "bg-[var(--tile-correct)] border-[var(--tile-correct)] text-white";
-  }
-  const solution = puzzle.hints[puzzle.hints.length - 1].answer.toUpperCase();
-  const answer = puzzle.hints[rowIndex].answer.toUpperCase();
-  const letter = answer[colIndex];
+const TILE_COLORS = {
+  correct: "bg-[var(--tile-correct)] border-[var(--tile-correct)] text-white",
+  present: "bg-[var(--tile-present)] border-[var(--tile-present)] text-white",
+  absent: "bg-[var(--tile-absent)] border-[var(--tile-absent)] text-white",
+} as const;
 
-  if (letter === solution[colIndex]) return "bg-[var(--tile-correct)] border-[var(--tile-correct)] text-white";
-  if (solution.includes(letter)) return "bg-[var(--tile-present)] border-[var(--tile-present)] text-white";
-  return "bg-[var(--tile-absent)] border-[var(--tile-absent)] text-white";
+function getTileColor(puzzle: PuzzleData, rowIndex: number, colIndex: number): string {
+  // Pre-fill every row's colors by scoring that row's answer against the
+  // puzzle's key word — the same comparison for all 5 rows.
+  const answer = puzzle.hints[rowIndex].answer;
+  const status = scoreWord(puzzle.solution, answer)[colIndex].status;
+  return TILE_COLORS[status];
 }
 
 export default function LetterGrid({ puzzle }: LetterGridProps) {
   const {
-    grid, currentRow, currentCol, completedRows,
+    grid, currentRow, currentCol, completedRows, rowFeedback,
     selectCell, updateTile, findNextEmptyCell, isRowComplete,
   } = useGameStore();
 
@@ -91,14 +93,21 @@ export default function LetterGrid({ puzzle }: LetterGridProps) {
             currentRow === rowIndex && currentCol === colIndex && !completedRows[rowIndex];
           const hasLetter = tile.letter !== "";
           const colorClass = getTileColor(puzzle, rowIndex, colIndex);
+          const isCompleted = completedRows[rowIndex];
+          const isShaking = rowFeedback[rowIndex] === "incorrect";
 
           return (
             <motion.div
               key={`${rowIndex}-${colIndex}`}
               className={cn(
-                "aspect-square flex items-center justify-center text-xl font-bold rounded cursor-pointer select-none transition-colors duration-150",
-                isSelected ? "border-2 border-primary ring-2 ring-primary/30" : "border-2 border-border",
-                hasLetter ? colorClass : "bg-muted text-transparent"
+                "aspect-square flex items-center justify-center text-xl font-bold rounded cursor-pointer select-none transition-colors duration-150 border-2",
+                // Colors are pre-filled from the start — the Reverdle twist — so
+                // the tile is always tinted against the key word, letter or not.
+                colorClass,
+                // A solved row keeps a green outline; the whole row shakes when wrong.
+                isCompleted && "ring-2 ring-[var(--tile-correct)] ring-offset-2 ring-offset-background",
+                isSelected && "ring-2 ring-primary/60 ring-offset-1",
+                isShaking && "animate-shake"
               )}
               onClick={() => { if (!completedRows[rowIndex]) selectCell(rowIndex, colIndex); }}
               animate={hasLetter ? { scale: [1, 1.1, 1] } : { scale: 1 }}

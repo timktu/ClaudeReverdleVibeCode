@@ -2,6 +2,9 @@ import { create } from "zustand";
 
 export type TileStatus = "empty" | "filled" | "correct" | "present" | "absent";
 
+/** Transient per-row feedback played right after a check, then cleared. */
+export type RowFeedback = "correct" | "incorrect" | null;
+
 export interface Tile {
   letter: string;
   status: TileStatus;
@@ -17,7 +20,7 @@ interface GameStore {
   currentRow: number | null;
   currentCol: number | null;
   completedRows: boolean[];
-  checkedRows: boolean[];
+  rowFeedback: RowFeedback[];
   darkMode: boolean;
   gameCompleted: boolean;
 
@@ -25,7 +28,7 @@ interface GameStore {
   selectCell: (row: number, col: number) => void;
   updateTile: (row: number, col: number, letter: string) => void;
   markRowCompleted: (rowIndex: number) => void;
-  markRowShake: (rowIndex: number) => void;
+  flashRow: (rowIndex: number, feedback: Exclude<RowFeedback, null>) => void;
   setGameCompleted: (completed: boolean) => void;
   resetGame: () => void;
   isRowComplete: (rowIndex: number) => boolean;
@@ -37,7 +40,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentRow: null,
   currentCol: null,
   completedRows: Array(5).fill(false),
-  checkedRows: Array(5).fill(false),
+  rowFeedback: Array(5).fill(null),
   darkMode:
     typeof window !== "undefined"
       ? window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -76,19 +79,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  markRowShake: (rowIndex) => {
+  flashRow: (rowIndex, feedback) => {
     set((state) => {
-      const checkedRows = [...state.checkedRows];
-      checkedRows[rowIndex] = true;
-      return { checkedRows };
+      const rowFeedback = [...state.rowFeedback];
+      rowFeedback[rowIndex] = feedback;
+      return { rowFeedback };
     });
+    // Clear once the flash/shake animation has finished so it can replay.
     setTimeout(() => {
       set((state) => {
-        const checkedRows = [...state.checkedRows];
-        checkedRows[rowIndex] = false;
-        return { checkedRows };
+        if (state.rowFeedback[rowIndex] !== feedback) return state;
+        const rowFeedback = [...state.rowFeedback];
+        rowFeedback[rowIndex] = null;
+        return { rowFeedback };
       });
-    }, 450);
+    }, 600);
   },
 
   setGameCompleted: (completed) => set({ gameCompleted: completed }),
@@ -99,7 +104,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentRow: null,
       currentCol: null,
       completedRows: Array(5).fill(false),
-      checkedRows: Array(5).fill(false),
+      rowFeedback: Array(5).fill(null),
       gameCompleted: false,
     }),
 
