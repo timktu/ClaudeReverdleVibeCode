@@ -9,6 +9,11 @@ export interface PuzzleData {
   id: number;
   name: string;
   hints: Hint[];
+  /**
+   * The key word every row is scored against. This is a separate word that
+   * may or may not appear among the 5 grid rows.
+   */
+  solution: string;
 }
 
 export interface CheckRowRequest {

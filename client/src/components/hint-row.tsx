@@ -7,12 +7,12 @@ interface HintRowProps {
 }
 
 export default function HintRow({ hint }: HintRowProps) {
-  const { currentRow, completedRows, checkedRows, selectCell, grid } =
+  const { currentRow, completedRows, rowFeedback, selectCell, grid } =
     useGameStore();
 
   const isActive = currentRow === hint.rowIndex;
   const isCompleted = completedRows[hint.rowIndex];
-  const isShaking = checkedRows[hint.rowIndex];
+  const feedback = rowFeedback[hint.rowIndex];
 
   const handleClick = () => {
     // Focus the first empty cell in this row, or the last cell
@@ -30,7 +30,8 @@ export default function HintRow({ hint }: HintRowProps) {
           : isActive
             ? "bg-primary/10 border border-primary/40"
             : "bg-muted border border-transparent hover:border-border",
-        isShaking && "animate-shake"
+        feedback === "correct" && "animate-flash-green",
+        feedback === "incorrect" && "animate-flash-red"
       )}
       onClick={handleClick}
     >
